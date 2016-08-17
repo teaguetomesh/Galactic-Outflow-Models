@@ -207,12 +207,13 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
         //driver goes from r to ri
         int status = gsl_odeiv2_driver_apply (d, &r, ri, y);
 
-        if (status != GSL_SUCCESS)
+        if ((status != GSL_SUCCESS) || (isnan(y[0])) || (isnan(y[1])))
         {
             printf ("error in 1, return value=%d\n", status);
             u.push_back(0.);
             cs.push_back(0.);
             rlist.push_back(2 * rad);
+            rholist.push_back(0.);
             failed = true;
             break;
         }
@@ -254,6 +255,7 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
             u.push_back(0.);
             cs.push_back(0.);
             rlist.push_back(2 * rad);
+            rholist.push_back(0.);
             failed = true;
             break;
         }
@@ -300,6 +302,7 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
             u.push_back(0.);
             cs.push_back(0.);
             rlist.push_back(ri);
+            rholist.push_back(0.);
             break;
         }
         double rho1 = rholist.back();
@@ -326,7 +329,7 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
 	totalPressure_pre = rho1*gsl_pow_2(u1) + rho1*gsl_pow_2(cs1)/gamma + gsl_pow_2(B1)/(8*M_PI);
 	totalPressure_post = (rholist.back())*gsl_pow_2(u.back()) + (rholist.back())*gsl_pow_2(cs.back())/gamma + gsl_pow_2(B1)/(8*M_PI);
 
-        if ((totalPressure_pre > P_IGM) && (totalPressure_post < P_IGM) && (Mach > 1.0))
+        if ((totalPressure_pre > P_IGM) && (totalPressure_post < P_IGM) && (Mach > 1.0) && (shock != 0))
         { 
 			wildShock = true;
             printf("A wild shock appears! \n");
