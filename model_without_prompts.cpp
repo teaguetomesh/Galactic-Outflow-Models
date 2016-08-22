@@ -148,15 +148,11 @@ vector<double> model_without_prompts(double alpha, double beta, double SFR, doub
 		//creating a vector to be returned so that a file can be created keeping track of all
 		// of the different values
 		vector<double> shockData1 = {alpha, beta, SFR, (double) mass, uc, B1,(double) shock, 0,0,0,0,0,0,0};
-		
-		//cout<<"Size of shockData1: " << shockData1.size() << "\n";
-		//cout<<"Before calling complete_data\n";
 		vector<double> shockData2 = complete_data(shockData1);
-		//cout<<"After calling complete_data\n";
 		
 		//Adding the central temperature to the data vector
 		double centTemp = M_MASS*gsl_pow_2(vec[2][0])/(gamma*KB);
-		vector<double> shockData3 = add_Temp(shockData2, centTemp);
+		shockData3 = add_Temp(shockData2, centTemp);
 		
 		cout << "ucInput: " << ucInput << "\n";
 		
