@@ -63,7 +63,13 @@ int main()
 	{
 		//Call model_without_prompts and begin a run
 		vector<double> callModel = model_without_prompts(alpha, beta, SFR, uc-i*.01, B1, shock, mass);
-	
+		
+		//Use this if statement to stop code if there is an error
+		if(callModel.size() == 1)
+		{
+			break;
+		}
+		
 		//Write contents of callModel into simulation file
 		if(i<9)
 		{
