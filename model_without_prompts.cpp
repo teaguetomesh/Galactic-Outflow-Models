@@ -104,6 +104,13 @@ vector<double> model_without_prompts(double alpha, double beta, double SFR, doub
 	{
 		emptyVec = true;
 	}
+	
+	//Use this if statement to stop the code if an error is reached
+	if(vec[0][0] == 0 && vec[1][0] == 0 && vec[2][0] == 0 && vec[3][0] == 0)
+	{
+		return 	{0};
+	}
+	
 	if(!tooSmall && !emptyVec)
 	{
 		for (unsigned int i = 0; i < vec[0].size(); i++)
