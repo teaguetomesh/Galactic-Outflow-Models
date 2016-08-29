@@ -273,8 +273,8 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
     sys = {func2, NULL, 2, &params};
     d = gsl_odeiv2_driver_alloc_y_new (&sys, gsl_odeiv2_step_rkf45,
         0.0000001e20, 1e-6, 0.0);
-
-	r = rad + DR;
+    
+    r = rad + DR;
     r0 = r;
     r1 = endPoint;
     //starting point for integration
@@ -283,17 +283,31 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
 
     //number of points between R and endPoint
     int len3 = 9500;
-
+    //number of points between R and 2R
+    int len4 = 100;
+    
     //integrate outwards from R to endPoint
     //i.e. to 1 in scaled units. Fills 110-149 in lists
-	
+    int numPointsFinished = 0;
     if (failed)
     {
         len3 = 0;
     }
     for (int i = 1; i <= len3; i++)
     {
-        double ri = r0 + i * (r1 - r0) / len3;
+	double ri;
+	//This if-else statement allows for a larger number of points around R and 2R for higher resolution
+	if(numPointsFinished < len4)
+	{
+		ri = r0 + numPointsFinished * (r0/len4);
+	}
+	else
+	{
+		ri = 2*r0 + (i-len4) * (r1 - 2*r0) / (len3-len4);
+	}
+	//cout << ri/3.086e18 << "\n";
+	numPointsFinished++;    	
+        
         int status = gsl_odeiv2_driver_apply (d, &r, ri, y);
 
         if (status != GSL_SUCCESS)
