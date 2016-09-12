@@ -327,14 +327,14 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
         u.push_back(y[0]);
         cs.push_back(sqrt(y[1]));
         rlist.push_back(ri);
-        rholist.push_back(qavg(RAD,q0,rad) * RAD * RAD * RAD /(3*gsl_pow_2(ri)*y[0]));
+        rholist.push_back(qavg(rad,q0,rad) * rad * rad * rad /(3*gsl_pow_2(ri)*y[0]));
 
         double ratio;
         //double B2;
 	
 	double B1;
         //assume B falls off as 1/r:
-        B1 = B_init*RAD/ri;
+        B1 = B_init*rad/ri;
 //	cout << B1 << "\n"; 
 	
 	//Define the pre-shock and post-shock total pressures as the sum of ram pressure, gas pressure, mag pressure
