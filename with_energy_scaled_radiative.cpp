@@ -22,7 +22,6 @@ const double DR = 0.00001e20;
 //mean mass per particle
 const double M_MASS = 1.021e-24;
 //200pc
-const double RAD = 6.171e20;
 
 //structure used for parameters
 struct parameters {double gamma;
@@ -156,17 +155,21 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
 	double rc = find_crit_rad(uc, gamma, ksi, m, rad, m_h, a, q0);
 	if (rc < 0)
     {
+		//Doesn't find a positive radius for critical point
 		cout<<"ERROR: Critical Radius = " << rc << "\n";
         list<double> rlist;
         list<double> u;
         list<double> cs;
+		list<double> rholist;
         rlist.push_front(0.);
         cs.push_front(0.);
         u.push_front(0.);
+		rholist.push_front(0.);
         vector<vector<double> > ret {{make_move_iterator(begin(rlist)),
             make_move_iterator(end(rlist))}, {make_move_iterator(begin(u)),
             make_move_iterator(end(u))}, {make_move_iterator(begin(cs)),
-            make_move_iterator(end(cs))} };
+            make_move_iterator(end(cs))}, {make_move_iterator(begin(rholist)),
+            make_move_iterator(end(rholist))} };
 		//cout<<"rlist size: " <<rlist.size()<<"\n";
 		//cout<<"u size: " << u.size() << "\n";
 		//cout<<"cs size: " << cs.size() << "\n";
@@ -209,6 +212,7 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
 
         if ((status != GSL_SUCCESS) || (isnan(y[0])) || (isnan(y[1])))
         {
+			//Error between 0 and critical point
             printf ("error in 1, return value=%d\n", status);
             u.push_back(0.);
             cs.push_back(0.);
@@ -251,6 +255,8 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
 
         if (status != GSL_SUCCESS)
         {
+			//Error between critical point and galaxy radius
+			//Due to gravity usually
             printf ("error in 2, return value=%d\n", status);
             u.push_back(0.);
             cs.push_back(0.);
@@ -273,8 +279,8 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
     sys = {func2, NULL, 2, &params};
     d = gsl_odeiv2_driver_alloc_y_new (&sys, gsl_odeiv2_step_rkf45,
         0.0000001e20, 1e-6, 0.0);
-    
-    r = rad + DR;
+
+	r = rad + DR;
     r0 = r;
     r1 = endPoint;
     //starting point for integration
@@ -283,31 +289,31 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
 
     //number of points between R and endPoint
     int len3 = 9500;
-    //number of points between R and 2R
-    int len4 = 100;
-    
+	//number of points between R and 2R
+	int len4 = 100;
+
     //integrate outwards from R to endPoint
     //i.e. to 1 in scaled units. Fills 110-149 in lists
-    int numPointsFinished = 0;
-    if (failed)
+	int numPointsFinished = 0;
+	if (failed)
     {
         len3 = 0;
     }
     for (int i = 1; i <= len3; i++)
     {
-	double ri;
-	//This if-else statement allows for a larger number of points around R and 2R for higher resolution
-	if(numPointsFinished < len4)
-	{
-		ri = r0 + numPointsFinished * (r0/len4);
-	}
-	else
-	{
-		ri = 2*r0 + (i-len4) * (r1 - 2*r0) / (len3-len4);
-	}
-	//cout << ri/3.086e18 << "\n";
-	numPointsFinished++;    	
-        
+		double ri;
+		//This if-else statement allows for a larger number of points around R and 2R for higher resolution
+		if(numPointsFinished < len4)
+		{
+			ri = r0 + numPointsFinished * (r0/len4);
+		}
+		else
+		{
+			ri = 2*r0 + (i-len4) * (r1 - 2*r0) / (len3-len4);
+		}
+		//cout << ri/3.086e18 << "\n";
+		numPointsFinished++;
+		
         int status = gsl_odeiv2_driver_apply (d, &r, ri, y);
 
         if (status != GSL_SUCCESS)
@@ -332,17 +338,21 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
         double ratio;
         //double B2;
 	
-	double B1;
+		double B1;
         //assume B falls off as 1/r:
         B1 = B_init*rad/ri;
-//	cout << B1 << "\n"; 
+		//	cout << B1 << "\n"; 
 	
-	//Define the pre-shock and post-shock total pressures as the sum of ram pressure, gas pressure, mag pressure
-	double totalPressure_pre;
-	double totalPressure_post;
-	totalPressure_pre = rho1*gsl_pow_2(u1) + rho1*gsl_pow_2(cs1)/gamma + gsl_pow_2(B1)/(8*M_PI);
-	totalPressure_post = (rholist.back())*gsl_pow_2(u.back()) + (rholist.back())*gsl_pow_2(cs.back())/gamma + gsl_pow_2(B1)/(8*M_PI);
-
+		//Define the pre-shock and post-shock total pressures as the sum of ram pressure, gas pressure, mag pressure
+		double totalPressure_pre;
+		double totalPressure_post;
+		totalPressure_pre = rho1*gsl_pow_2(u1) + rho1*gsl_pow_2(cs1)/gamma + gsl_pow_2(B1)/(8*M_PI);
+		totalPressure_post = (rholist.back())*gsl_pow_2(u.back()) + (rholist.back())*gsl_pow_2(cs.back())/gamma + gsl_pow_2(B1)/(8*M_PI);
+		//cout<<"totalPressure_pre: "<<totalPressure_pre<<"\n";
+		//cout<<"totalPressure_post: "<<totalPressure_post<<"\n";
+		//cout<<"P_IGM: "<<P_IGM<<"\n";
+		//cout<<"Mach: " << Mach<<"\n";
+		//cout<<"shock: "<<shock<<"\n";
         if ((totalPressure_pre > P_IGM) && (totalPressure_post < P_IGM) && (Mach > 1.0) && (shock != 0))
         { 
 			wildShock = true;
@@ -370,7 +380,7 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
                 cout << "u: " << u.back() / sqrt(G * m / rad) << "\n";
                 cout << "cs: " << cs.back() / sqrt (G * m / rad) << "\n";
                 */
-		d = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rkf45, 0.0000001e20, 1e-6, 0.0);
+				d = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rkf45, 0.0000001e20, 1e-6, 0.0);
             }
             else if (shock == 2)
             { //magnetized shock
@@ -404,7 +414,7 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
                 rholist.back() = rho1/ratio; //rho 2
                 //B2 = B1/ratio;
                 cs.back() = sqrt((1+gamma*gsl_pow_2(Mach*B1/u1)/(8*M_PI*rho1)*(1-gsl_pow_2(ratio)) + gamma*gsl_pow_2(Mach)*(1-ratio))*ratio)*cs1;
-		d = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rkf45, 0.0000001e20, 1e-6, 0.0);
+				d = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rkf45, 0.0000001e20, 1e-6, 0.0);
             }
         }
         y[0] = u.back();

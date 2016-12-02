@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <list>
 #include "model_without_prompts.h"
+#include "model_without_prompts_v2.h"
 #include <vector>
 #include <iostream>
 using namespace std;

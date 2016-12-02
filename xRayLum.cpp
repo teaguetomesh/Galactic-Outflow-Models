@@ -8,7 +8,7 @@
 
 using namespace std;
 
-vector<double> xRayLum(double ucInput, double uc)
+vector<double> xRayLum(double ucInput, double uc, double rad)
 {
 	//Open the data file
 	ifstream file ("data");
@@ -137,23 +137,28 @@ vector<double> xRayLum(double ucInput, double uc)
 	
 	//Numerically integrate the luminosity function:
 	// 	Lx = integral((1.2)(0.71^2)*(n^2)*(r^2)*(lambda)dr) from 0 to infinity
+	//Also integrate the luminosity function but without the r^2 term to give the emissivity
 	vector<double> integrandAll;
+	vector<double> emissivity;
 	for(vector<double>::size_type i=0; i<radius.size(); i++)
 	{
 		integrandAll.push_back((1.2)*(pow(0.71, 2))*(pow(numDensity[i],2))*(pow(radius[i],2))*(coolLambda[i]));
+		emissivity.push_back((1.2)*(pow(0.71, 2))*(pow(numDensity[i],2))*(coolLambda[i]));
 	}
 	
 	//Calculate area under curve by adding up consecutive rectangles
 	int i2 = 0, stepSize = 1;
 	double totalArea = 0;
-	double x1, x2, y2, tempArea;
+	double x1, x2, y2, tempArea, y1, yAvg;
 	int vecSize = integrandAll.size();
 	while(true)
 	{
 		x1 = radius[i2];
 		x2 = radius[i2+stepSize];
 		y2 = integrandAll[i2+stepSize];
-		tempArea = (x2-x1)*(y2);
+		y1 = integrandAll[i2];
+		yAvg = (y2+y1)/2;
+		tempArea = (x2-x1)*(yAvg);
 		totalArea += tempArea;
 		i2 += stepSize;
 		if((i2+stepSize) >= vecSize){break;}
@@ -163,7 +168,7 @@ vector<double> xRayLum(double ucInput, double uc)
 	vector<double> returnVec;
 	returnVec.push_back(totalArea);
 	
-	//Creat a vector that contains the value of the integral for different radii
+	//Create a vector that contains the value of the integral for different radii
 	vector<double> integralSolved;
 	double lumAtRadius;
 	
@@ -172,7 +177,7 @@ vector<double> xRayLum(double ucInput, double uc)
 		lumAtRadius = 0;
 		for(vector<double>::size_type s=0; s<i; s++)
 		{
-			lumAtRadius += (radius[s+1]-radius[s])*(integrandAll[s+1]);
+			lumAtRadius += (radius[s+1]-radius[s])*(0.5*((integrandAll[s+1])+(integrandAll[s])));
 			if(isinf(lumAtRadius))
 			{
 				lumAtRadius = 0;
@@ -183,7 +188,7 @@ vector<double> xRayLum(double ucInput, double uc)
 	
 	//Open a file to store each run's data
 	string tempStr = to_string(ucInput);
-	tempStr = tempStr.substr(0, 4);
+	tempStr = tempStr.substr(0, 5);
 	string fileName = "DataFolder/ucInput" + tempStr + ".txt";
 	ofstream a_file (fileName);
 	a_file << scientific;
@@ -191,26 +196,27 @@ vector<double> xRayLum(double ucInput, double uc)
 	{
 		//Set up categories for file
  		a_file << "   " << "Radius" << "\t\t    " << "rho" << "\t\t\t" << "Temperature" << "\t\t  ";
-		a_file << "X-ray Lum" << "\t\t " << "Integrand" << "\t\t     " << "u" << "\t\t         " << "cs";
+		a_file << "X-ray Lum" << "\t\t " << "Emissivity" << "\t\t     " << "u" << "\t\t         " << "cs";
 		a_file << "\t\t\t" << "uc = " << uc;
 		a_file << endl;
 	}
 	else cout << "Unable to open file";
 	
-	
+	//To add the integrad to the file like before: add integrandAll[i]
 	for(vector<double>::size_type i=0; i<radius.size(); i++)
 	{
 		a_file << radius[i] << "    " << rho[i] << "    " << temp[i] << "    ";
-		a_file << integralSolved[i] << "    " << integrandAll[i] << "    ";
-		a_file << velocity[i] << "    " << soundSpeed[i];
+		a_file << integralSolved[i] << "    " << emissivity[i] << "    ";
+		a_file << velocity[i] << "    " << soundSpeed[i] << "    " << integrandAll[i];
 		a_file << endl;
 	}
 	a_file.close();
 	
 	//Find and print the maximum velocity
-	double maxVel, tempVel = -1;
+	double maxVel = -2; 
+	double tempVel = -1;
 	double radiusInParsec;
-	double radiusLimit = 500;
+	double radiusLimit = 2.5*rad;
 	for(vector<double>::size_type i=0; i<radius.size(); i++)
 	{
 		radiusInParsec = radius[i]/(3.086*pow(10,18));
@@ -226,6 +232,43 @@ vector<double> xRayLum(double ucInput, double uc)
 	}
 	maxVel = maxVel/100000;
 	cout << "Max Velocity within " << to_string(radiusLimit).substr(0,6) << "pc: " << maxVel << " km/s\n";
+	
+	//Find and print the asymptotic velocity
+	double asymVel = -2; 
+	double tempVel2 = -1;
+	double radiusInParsec2;
+	double radiusLimit2 = 150000;
+	for(vector<double>::size_type i=0; i<radius.size(); i++)
+	{
+		radiusInParsec2 = radius[i]/(3.086*pow(10,18));
+		if(radiusInParsec2 > radiusLimit2){break;}
+		else
+		{
+			tempVel2 = velocity[i];
+			if(tempVel2 > asymVel)
+			{
+				asymVel = tempVel2;
+			}
+		}
+	}
+	asymVel = asymVel/100000;
+	cout << "Aysmptotic Velocity: " << asymVel << " km/s\n";
+	
+	//Print the central temperature
+	cout << "Central Temperature: " << temp[0] << " K\n";
+	
+	
+	ofstream test_file ("DataFolder/Extra_Data.txt");
+	test_file << scientific;
+	for(vector<double>::size_type i=0; i<radius.size(); i++)
+	{
+		test_file << radius[i] << "    " << rho[i] << "    " << temp[i] << "    ";
+		test_file << integralSolved[i] << "    " << emissivity[i] << "    ";
+		test_file << velocity[i] << "    " << soundSpeed[i] << "    " << integrandAll[i] << "    ";
+		test_file << numDensity[i] << "    " << coolLambda[i];
+		test_file << endl;
+	}
+	test_file.close();
 	
 	return returnVec;
 	

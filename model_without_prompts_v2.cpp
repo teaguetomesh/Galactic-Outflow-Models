@@ -9,7 +9,7 @@
 #include "xRayLum.h"
 using namespace std;
 
-vector<double> model_without_prompts(double alpha, double beta, double SFR, double uc,
+vector<double> model_without_prompts_v2(double alpha, double beta, double SFR, double uc,
 									 double B1, int shock, double mass, double rad)
 {
 	const double P_IGM = gsl_pow_int(10,-14);
@@ -18,19 +18,7 @@ vector<double> model_without_prompts(double alpha, double beta, double SFR, doub
     const double M_MASS = 1.021 * gsl_pow_int(10, -24);
     double gamma, m, m_h, a;
   
-    //cout << "Enter alpha: ";
-    //cin >> alpha;
-
-    //cout << "Enter beta: ";
-    //cin >> beta;
-
-    //cout << "Enter SFR: ";
-    //cin >> SFR;
-
-    //get gamma value of 4/3 or 5/3 from user
     int in;
-    //cout << "Enter gamma (5 for 5/3, 4 for 4/3): ";
-    //cin >> in;
     in = 5;
     if (in == 5)
     {
@@ -49,39 +37,27 @@ vector<double> model_without_prompts(double alpha, double beta, double SFR, doub
 
     gamma = 5. / 3.;
 
-	//int mass;
-    //cout << "Enter power of ten of mass of galaxy (9 for 10^9): ";
-    //cin >> mass;
-    m = pow(10, mass) * 1.9884 * pow(10, 33);
+    m = gsl_pow_int(10, mass) * 1.9884 * gsl_pow_int(10, 33);
 
     int mass_halo;
-    //cout << "Enter power of ten of halo mass: ";
-    //cin >> mass_halo;
     mass_halo = 2;
     m_h = gsl_pow_int(10, mass_halo) * 1.9884 * gsl_pow_int(10, 33);
 
-    //cout << "Enter characteristic halo length in kiloparsecs: ";
-    //cin >> a;
+    //characteristic halo length in kiloparsecs;
     a = 5;
     a *= 3.0857*gsl_pow_int(10, 21);
 
-    //cout << "Enter radius of mass and energy injection in parsecs: ";
-    //cin >> rad;
-    //rad = 200;
-    rad *= (3.0857*gsl_pow_int(10, 18));
+    //radius of mass and energy injection in parsecs;
+    rad = 200;
+    rad *= 3.0857*gsl_pow_int(10, 18);
 	
 
-    //cout << "Enter velocity at critical radius: ";
-    //cin >> uc;
+    //velocity at critical radius;
     double ucInput = uc;
 	uc *= sqrt(G * m / rad);
 
-    //cout << "Enter Magnetic Field in uG at 200pc: ";
-    //cin >> B1;
+    //Magnetic Field in uG at 200pc;
     B1 *= gsl_pow_int(10,-6);
-
-    //cout << "Wind shocks? (0 = No; 1 = Yes, without B field; 2 = Yes, WITH B field)";
-    //cin >> shock;
 
 	cout << "\n"; 
 	
@@ -99,10 +75,12 @@ vector<double> model_without_prompts(double alpha, double beta, double SFR, doub
 	if(vec.size() < 4)
 	{
 		tooSmall = true;
+		return {0};
 	}
-	if(!tooSmall && (vec[0].empty() || vec[1].empty() || vec[2].empty() || vec[3].empty()))
+	else if(vec[0].empty() || vec[1].empty() || vec[2].empty() || vec[3].empty())
 	{
 		emptyVec = true;
+		return {0};
 	}
 	
 	//Use this if statement to stop the code if an error is reached
@@ -151,34 +129,42 @@ vector<double> model_without_prompts(double alpha, double beta, double SFR, doub
 			file << "\n";
 		}
 		file.close();
-		
-		//creating a vector to be returned so that a file can be created keeping track of all
-		// of the different values
-		vector<double> shockData1 = {alpha, beta, SFR, (double) mass, uc, B1,(double) shock, 0,0,0,0,0,0,0};
-		vector<double> shockData2 = complete_data(shockData1);
-		
-		//Adding the central temperature to the data vector
-		double centTemp = M_MASS*gsl_pow_2(vec[2][0])/(gamma*KB);
-		shockData3 = add_Temp(shockData2, centTemp);
-		
-		cout << "ucInput: " << ucInput << "\n";
-		
-		//Add the x-ray luminosity to the returning vector
-		vector<double> xRayLuminosity = xRayLum(ucInput, uc, rad/(3.0857*gsl_pow_int(10, 18)));
-		shockData3.push_back(xRayLuminosity[0]);
 	}
-	else if(tooSmall)
+	//creating a vector to be returned so that a file can be created keeping track of all
+	// of the different values
+	vector<double> shockData1 = {alpha, beta, SFR, (double) mass, uc, B1,(double) shock, 0,0,0,0,0,0,0};
+	vector<double> shockData2 = complete_data(shockData1);
+		
+	//Adding the central temperature to the data vector
+	double centTemp = M_MASS*gsl_pow_2(vec[2][0])/(gamma*KB);
+	shockData3 = add_Temp(shockData2, centTemp);
+		
+	//Add the x-ray luminosity to the returning vector
+	vector<double> xRayLuminosity = xRayLum(ucInput, uc, rad);
+	shockData3.push_back(xRayLuminosity[0]);
+		
+	//Add more values to returning vector
+	double Mach_pre, Mach_post;
+	for (unsigned int k = 1; k < vec[0].size()-1; k++) 
 	{
-		cout << "ERROR: Data vector has size = " << vec.size() << ", Must have size = 4\n";
+		// find shock and calculate shock quantities
+		Mach_pre = vec[1][k]/vec[2][k];
+		Mach_post = vec[1][k+1]/vec[2][k+1];
+			
+		if ((Mach_pre > 1.0) && (Mach_post < 1.0)) 
+		{
+			shockData3.push_back(vec[0][k]); //radius of shock
+			shockData3.push_back(vec[1][k]/vec[2][k]); //mach number
+			shockData3.push_back(vec[1][k]); //asymptotic velocity
+			//tempAsym = M_MASS*gsl_pow_2(vec[2][k])/(gamma*KB); // temp just before shock
+			shockData3.push_back(vec[3][k]); //density at shock
+			shockData3.push_back(M_MASS*gsl_pow_2(vec[2][k+1])/(gamma*KB)); //temp just after shock
+			//B_shock = B_r; // magnetic field strength at shock
+		}
+				   
 	}
-	else if(emptyVec)
-	{
-		cout << "ERROR: One of the vectors is empty\n";
-	}
-	else{
-		cout << "Uncaught Exception\n";
-	}
+
 	cout<<"END OF RUN\n";
 	
-    return shockData3;
+	return shockData3;
 }
