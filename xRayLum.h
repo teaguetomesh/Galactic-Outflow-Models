@@ -4,6 +4,6 @@
 #include <vector>
 using namespace std;
 
-vector<double> xRayLum(double, double, double);
+vector<double> xRayLum(double, double, double, double);
 
 #endif

@@ -159,12 +159,28 @@ vector<double> model_without_prompts(double alpha, double beta, double SFR, doub
 		
 		//Adding the central temperature to the data vector
 		double centTemp = M_MASS*gsl_pow_2(vec[2][0])/(gamma*KB);
+		
 		shockData3 = add_Temp(shockData2, centTemp);
 		
 		cout << "ucInput: " << ucInput << "\n";
 		
+	// Find shock radius to pass to xraylum.cpp
+	double Mach_pre, Mach_post, shockRad;
+	for (unsigned int k = 1; k < vec[0].size()-1; k++) 
+	{
+		// find shock and calculate shock quantities
+		Mach_pre = vec[1][k]/vec[2][k];
+		Mach_post = vec[1][k+1]/vec[2][k+1];
+			
+		if ((Mach_pre > 1.0) && (Mach_post < 1.0)) 
+		{
+			shockRad = vec[0][k]; //radius of shock
+		}
+				   
+	}
+		
 		//Add the x-ray luminosity to the returning vector
-		vector<double> xRayLuminosity = xRayLum(ucInput, uc, rad/(3.0857*gsl_pow_int(10, 18)));
+		vector<double> xRayLuminosity = xRayLum(ucInput, uc, rad/(3.0857*gsl_pow_int(10, 18)), shockRad);
 		shockData3.push_back(xRayLuminosity[0]);
 	}
 	else if(tooSmall)

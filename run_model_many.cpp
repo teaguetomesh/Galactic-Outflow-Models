@@ -84,7 +84,7 @@ int main()
 			}
 			alpha = 0;
 			B1 = 3;
-			shock = 2;
+			shock = 0;
 			cout << galaxies[whichGalaxy] << ":\n";
 			cout << "Alpha: " << alpha << '\n';
 			cout << "Beta: " << beta << '\n';
@@ -185,7 +185,8 @@ int main()
 	else
 	{
 		//Declare variables to pass to model_without_prompts
-		double alpha, beta, SFR, uc, B1, mass, rad; 
+		double alpha, beta, SFR, uc, B1, mass, rad;
+		//double startUC; 
 		int shock;
 		
 		//xRayLum();
@@ -205,6 +206,8 @@ int main()
 		
 		cout << "Enter velocity at critical radius: ";
 		cin >> uc;
+		//cout << "Enter starting velocity at critical radius: ";
+		//cin >> startUC;
 		
 		//cout << "Enter radius of mass and energy injection in parsecs: ";
 		//cin >> rad;
@@ -223,26 +226,31 @@ int main()
 		if(a_file.is_open())
 		{
 			//Set up categories for file
-/* 			a_file <<  setw(16) << "beta" << setw(16) << "crit rad" << setw(16) << "crit vel" << setw(16) 
+ 			/*a_file <<  setw(16) << "beta" << setw(16) << "crit rad" << setw(16) << "crit vel" << setw(16) 
 					<< "ShockRad" << setw(16) << "Mach #" << setw(16)
 					<< "AsymVel" << setw(16) << "Rho Shock" << setw(16) << "PostTemp";
-			a_file << endl; */
+			a_file << endl;*/
 		}
 		else cout << "Unable to open file";
 		
 		a_file << scientific;
 
 		//Run model with random variables and write data points to file
-		for (int n = 0; n < 500000; n++)
+		//double bestUC;
+		//double observedLum = 1.70E+41;
+		//double smallestDif = 1E+14;
+		for (int n = 0; n < 100000; n++)
 		{
-			SFR = (rand() % 200 + 1) * 0.1;
+			SFR = (rand() % 100 + 1);
 			beta = (rand() % 1500 + 1) * 0.01;
+			//uc = startUC - 0.01*n;
 
-			cout << "\nSFR: " << SFR << "\tbeta: " << beta;
+			//cout << "\nSFR: " << SFR << "\tbeta: " << beta;
+			cout << "\nUC: " << uc;
 				
 			//Call model_without_prompts and begin a run
 			vector<double> callModel = model_without_prompts_v2(alpha, beta, SFR, uc, B1, shock, mass, rad);
-			vector<double> callModel2 = model_without_prompts_v2(alpha, beta, SFR, uc, B1, 0, mass, rad);
+			//vector<double> callModel2 = model_without_prompts_v2(alpha, beta, SFR, uc, B1, 0, mass, rad);
 			
 			bool dontWrite = false;
 				
@@ -259,7 +267,7 @@ int main()
 			}
 				
 			//Write contents of callModel into termShock_sim2_data file
-			vector<int> whichIndices = {1, 2, 14, 15, 13};
+			vector<int> whichIndices = {1, 2, 14, 15, 13, 8};
 			/*
 			1 = beta
 			2 = SFR
@@ -280,9 +288,19 @@ int main()
 					a_file << setw(16) << callModel[whichIndices[i]];
 				}
 				//a_file << setw(16) << callModel2[14];
+				a_file << setw(16) << uc;
 				a_file << endl;	
 			}
+			
+			/*double curDif = abs(observedLum - callModel[14]);
+			if (curDif < smallestDif) {
+				bestUC = uc;
+				smallestDif = curDif;
+			}*/
+			
 		}
+		
+		//cout << "\nBest UC value: " << bestUC;
 		
 		a_file.close();
 		

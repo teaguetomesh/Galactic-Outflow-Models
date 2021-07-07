@@ -139,8 +139,21 @@ vector<double> model_without_prompts_v2(double alpha, double beta, double SFR, d
 	double centTemp = M_MASS*gsl_pow_2(vec[2][0])/(gamma*KB);
 	shockData3 = add_Temp(shockData2, centTemp);
 		
+	double Mach_pre1, Mach_post1, shockRad;
+	for (unsigned int k = 1; k < vec[0].size()-1; k++) 
+	{
+		// find shock and calculate shock quantities
+		Mach_pre1 = vec[1][k]/vec[2][k];
+		Mach_post1 = vec[1][k+1]/vec[2][k+1];
+			
+		if ((Mach_pre1 > 1.0) && (Mach_post1 < 1.0)) 
+		{
+			shockRad = vec[0][k]; //radius of shock
+		}	   
+	}	
+		
 	//Add the x-ray luminosity to the returning vector
-	vector<double> xRayLuminosity = xRayLum(ucInput, uc, rad);
+	vector<double> xRayLuminosity = xRayLum(ucInput, uc, rad, shockRad);
 	shockData3.push_back(xRayLuminosity[0]);
 		
 	//Add more values to returning vector
