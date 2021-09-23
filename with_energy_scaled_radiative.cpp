@@ -70,6 +70,9 @@ int func (double r, const double y[], double f[], void *p)
          / (3 * y[0]) - qcavg * r * f[0] / (3 * y[0] * y[0]) + qc
          / y[0]) / (qcavg * r) - gamma * (gamma - 1) * qcavg * r
          * lambda / (3 * y[0] * y[0] * M_MASS * M_MASS);
+		 
+	
+	//cout << "sqrt(y[1]): " << sqrt(y[1]) << '\n';
 
     return GSL_SUCCESS;
 }
@@ -170,10 +173,6 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
             make_move_iterator(end(u))}, {make_move_iterator(begin(cs)),
             make_move_iterator(end(cs))}, {make_move_iterator(begin(rholist)),
             make_move_iterator(end(rholist))} };
-		//cout<<"rlist size: " <<rlist.size()<<"\n";
-		//cout<<"u size: " << u.size() << "\n";
-		//cout<<"cs size: " << cs.size() << "\n";
-		//cout<< "ret size: " << ret.size() << "\n";
         return ret;
     }
 	cout << "Critical Radius: " << rc << "\t";
@@ -188,8 +187,9 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
 		    -0.0000001e20, 1e-6, 0.0);
     double r = rc - DR;
     double r1 = r;
+	
     double y[2] = { uc * 0.9999, gsl_pow_2(uc) };
-
+	
     //boolean to check if integration failed
     bool failed = false;
 
@@ -227,7 +227,47 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
         rlist.push_front(ri);
         rholist.push_front(qavg(ri,q0,rad)*ri/(3*y[0]));
     }
-  
+	
+	/////////////////////////////////////////////////////////////////////////
+	//This section sets up the cs list seperately so that the temperatures can be manipulated
+	//Block comment this section out and uncomment the cs.push_front in the for-loop above to 
+	//return to normal.   GOING FROM rc TO r0
+	/////////////////////////////////////////////////////////////////////////
+	/*
+	d = gsl_odeiv2_driver_alloc_y_new (&sys, gsl_odeiv2_step_rkf45, -0.0000001e20, 1e-6, 0.0);
+    r = rc - DR;
+    r1 = r;
+	
+	double fakeUC = 7e7;
+    y[0] = fakeUC * 0.9999;
+	y[1] = gsl_pow_2(fakeUC);
+	
+    //boolean to check if integration failed
+    failed = false;
+
+    //number of points between r0 and rc
+    len1 = 100;
+
+    //integrate inwards from the critical radius, r1, to r0 where r ~ 0
+    //fills 0-99 in lists
+    for (int i = len1 - 1; i >= 0; i--)
+    {
+        double ri = r0 + (r1 - r0) * i / len1;
+        //driver goes from r to ri
+        int status = gsl_odeiv2_driver_apply (d, &r, ri, y);
+
+        if ((status != GSL_SUCCESS) || (isnan(y[0])) || (isnan(y[1])))
+        {
+			//Error between 0 and critical point
+            printf ("error in 1, return value=%d\n", status);
+            failed = true;
+            break;
+        }
+
+        cs.push_front(sqrt(y[1]));
+    }
+	*/
+	/////////////////////////////////////////////////////////////////////////
 
     d = gsl_odeiv2_driver_alloc_y_new (&sys, gsl_odeiv2_step_rkf45,
         0.0000001e20, 1e-6, 0.0);
@@ -258,6 +298,7 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
 			//Error between critical point and galaxy radius
 			//Due to gravity usually
             printf ("error in 2, return value=%d\n", status);
+			printf ("error not coming from cs part\n");
             u.push_back(0.);
             cs.push_back(0.);
             rlist.push_back(2 * rad);
@@ -272,6 +313,50 @@ vector<vector<double> > with_energy_scaled_radiative (double alpha,
         rholist.push_back(qavg(ri,q0,rad)*ri/(3*y[0]));
     }
 
+	/////////////////////////////////////////////////////////////////////////
+	//This section sets up the cs list seperately so that the temperatures can be manipulated
+	//Block comment this section out and uncomment the cs.push_front in the for-loop above to 
+	//return to normal.   GOING FROM rc TO R
+	/////////////////////////////////////////////////////////////////////////
+	/*
+	d = gsl_odeiv2_driver_alloc_y_new (&sys, gsl_odeiv2_step_rkf45, 0.0000001e20, 1e-6, 0.0);
+
+    r = rc + DR;
+    r0 = r;
+    r1 = rad;
+    //starting point for integration
+    y[0] = fakeUC * 1.0001;
+    y[1] = gsl_pow_2(fakeUC);
+
+    //number of points between rc and R
+    len2 = 20; 
+
+    //integrate outwards from the critical radius to R
+    //i.e. to 1 in scaled units. Fills 100-109 in lists
+    if (failed)
+    {
+        len2 = 0;
+    }
+    for (int i = 1; i <= len2; i++)
+    {
+        double ri = r0 + (r1 - r0) * i / len2;
+        int status = gsl_odeiv2_driver_apply (d, &r, ri, y);
+
+        if (status != GSL_SUCCESS)
+        {
+			//Error between critical point and galaxy radius
+			//Due to gravity usually
+            printf ("error in 2, return value=%d\n", status);
+			printf ("error is coming from cs part\n");
+            failed = true;
+            break;
+        }
+
+        cs.push_back(sqrt(y[1]));
+    }
+	*/
+	/////////////////////////////////////////////////////////////////////////
+	
 
     // integrate from r = R to some endpoint
     double endPoint = 1000 * rad;  
